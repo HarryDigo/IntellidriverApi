@@ -20,6 +20,6 @@ try {
   console.error(err)
 }
 
-let db = client.db('intellidriver_db')
+const db = client.db('intellidriver_db')
 
 export { db }
