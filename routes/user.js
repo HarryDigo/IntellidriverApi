@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt'
 import express from 'express'
+import jwt from 'jsonwebtoken'
 
 import { db } from '#db'
 import { jwtAuthentication } from '#util'
@@ -14,15 +15,19 @@ users.get('/', jwtAuthentication, async (req, res) => {
 
 users.post('/', async (req, res) => {
   const { username, password } = req.body
+  if (!username || !password) {
+    return res.status(400).send('Username and password are required')
+  }
+
   const collection = db.collection('users')
 
   try {
-    const existingUser = collection.find({ username: username })
+    const existingUser = await collection.findOne({ username: username })
     if (existingUser) {
       return res.status(400).send('User already exists')
     }
 
-    const hashedPassword = bcrypt.hash(password, 10)
+    const hashedPassword = await bcrypt.hash(password, 10)
     const newUser = {
       username,
       password: hashedPassword
@@ -37,12 +42,16 @@ users.post('/', async (req, res) => {
 
 users.post('/login', async (req, res) => {
   const { username, password } = req.body
+  if (!username || !password) {
+    return res.status(400).send('Username and password are required')
+  }
+
   const collection = db.collection('users')
 
   try {
-    const user = collection.find({username: username})
+    const user = await collection.findOne({ username: username })
 
-    if (!user || !(bcrypt.compare(password, user.password))) {
+    if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).send('Invalid credentials')
     }
 
@@ -57,10 +66,31 @@ users.post('/login', async (req, res) => {
       { expiresIn: '2d' }
     )
 
-    res.status(200).json({ accessToken, refreshToken })
-  } catch {
+    res.status(201).json({ accessToken, refreshToken })
+  } catch (err) {
     res.status(500).send('Login failed')
   }
+})
+
+users.post('/refresh', (req, res) => {
+  const refreshToken = req.header('Authorization')?.split(' ')[1];
+  if (!refreshToken) {
+    return res.status(401).send('Access denied')
+  }
+
+  jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, user) => {
+    if (err) {
+      return res.status(401).send('Invalid refresh token')
+    }
+
+    const accessToken = jwt.sign(
+      { username: user.username },
+      process.env.JWT_ACCESS_SECRET,
+      { expiresIn: '15m' }
+    )
+
+    res.status(201).json({ accessToken })
+  })
 })
 
 export { users }
