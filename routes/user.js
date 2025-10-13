@@ -14,22 +14,22 @@ users.get('/', jwtAuthentication, async (req, res) => {
 })
 
 users.post('/', async (req, res) => {
-  const { username, password } = req.body
-  if (!username || !password) {
+  const { user } = req.body
+  if (!user) {
     return res.status(400).send('Username and password are required')
   }
 
   const collection = db.collection('users')
 
   try {
-    const existingUser = await collection.findOne({ username: username })
+    const existingUser = await collection.findOne({ username: user.username })
     if (existingUser) {
       return res.status(400).send('User already exists')
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await bcrypt.hash(user.password, 10)
     const newUser = {
-      username,
+      ...user,
       password: hashedPassword
     }
 
@@ -75,7 +75,7 @@ users.post('/login', async (req, res) => {
 users.post('/refresh', (req, res) => {
   const refreshToken = req.header('Authorization')?.split(' ')[1];
   if (!refreshToken) {
-    return res.status(401).send('Access denied')
+    return res.status(400).send('Missing refresh token')
   }
 
   jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, user) => {
