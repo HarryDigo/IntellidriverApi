@@ -13,6 +13,14 @@ users.get('/', jwtAuthentication, async (req, res) => {
   res.send(results).status(200)
 })
 
+users.get('/:username', jwtAuthentication, async (req, res) => {
+  const { username } = req.params
+
+  const collection = db.collection('users')
+  const result = await collection.findOne({ username: username })
+  res.send(result).status(200)
+})
+
 users.post('/', async (req, res) => {
   const { user } = req.body
   if (!user) {
