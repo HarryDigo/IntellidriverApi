@@ -15,10 +15,18 @@ users.get('/', jwtAuthentication, async (req, res) => {
 
 users.get('/:username', jwtAuthentication, async (req, res) => {
   const { username } = req.params
+  if (!username) {
+    return res.status(400).send('Username is required')
+  }
 
   const collection = db.collection('users')
-  const result = await collection.findOne({ username: username })
-  res.send(result).status(200)
+
+  try {
+    const result = await collection.findOne({ username: username })
+    res.send(result).status(200)
+  } catch {
+    res.status(500).send('Error fetching user')
+  }
 })
 
 users.post('/', async (req, res) => {
