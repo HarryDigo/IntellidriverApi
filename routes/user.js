@@ -23,11 +23,11 @@ users.get('/:username', jwtAuthentication, async (req, res) => {
 
   try {
     const result = await collection.findOne({ username: username })
-    if (result) res.send(result).status(200)
+    if (result) return res.send(result).status(200)
   } catch {
-    res.status(500).send('Error fetching user')
+    return res.status(500).send('Error fetching user')
   }
-  res.status(404).send('User not found')
+  return res.status(404).send('User not found')
 })
 
 users.post('/', async (req, res) => {
