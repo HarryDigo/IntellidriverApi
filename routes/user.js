@@ -51,7 +51,7 @@ users.post('/', async (req, res) => {
     }
 
     const result = await collection.insertOne(newUser)
-    res.send(result).status(201)
+    res.send(newUser).status(201)
   } catch {
     res.status(500).send('Error creating user')
   }
