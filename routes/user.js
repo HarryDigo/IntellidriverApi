@@ -9,8 +9,13 @@ const users = express.Router()
 
 users.get('/', jwtAuthentication, async (req, res) => {
   const collection = db.collection('users')
-  const results = await collection.find({}).toArray()
-  res.send(results).status(200)
+
+  try {
+    const results = await collection.find({}).toArray()
+    res.json(results).status(200)
+  } catch {
+    res.status(500).send("Error fetching users")
+  }
 })
 
 users.get('/:username', jwtAuthentication, async (req, res) => {
@@ -23,11 +28,11 @@ users.get('/:username', jwtAuthentication, async (req, res) => {
 
   try {
     const result = await collection.findOne({ username: username })
-    if (result) return res.send(result).status(200)
+    if (result) return res.json(result).status(200)
   } catch {
     return res.status(500).send('Error fetching user')
   }
-  return res.status(404).send('User not found')
+  res.status(404).send('User not found')
 })
 
 users.post('/', async (req, res) => {
@@ -50,7 +55,7 @@ users.post('/', async (req, res) => {
       password: hashedPassword
     }
 
-    const result = await collection.insertOne(newUser)
+    await collection.insertOne(newUser)
     res.json(newUser).status(201)
   } catch {
     res.status(500).send('Error creating user')
@@ -83,7 +88,7 @@ users.post('/login', async (req, res) => {
       { expiresIn: '2d' }
     )
 
-    res.status(201).json({ accessToken, refreshToken })
+    res.json({ accessToken, refreshToken }).status(201)
   } catch (err) {
     res.status(500).send('Login failed')
   }
@@ -106,8 +111,31 @@ users.post('/refresh', (req, res) => {
       { expiresIn: '15m' }
     )
 
-    res.status(201).json({ accessToken })
+    res.json({ accessToken }).status(201)
   })
+})
+
+users.get('/ranking/:spots', async (req, res) => {
+  const { spots } = req.params
+  if (!spots) {
+    return res.status(400).send('number of spots is required')
+  }
+
+  const collection = db.collection('users')
+
+  const pipeline = [
+    { $match: { ecoCoins: { $exists: true } } },
+    { $sort: { ecoCoins: -1 } },
+    { $limit: parseInt(spots) },
+    { $project: { _id: false, fullName: true, ecoCoins: true} }
+  ]
+
+  try {
+    const results = await collection.aggregate(pipeline).toArray()
+    res.json(results).status(200)
+  } catch {
+    res.status(500).send('Error fetching ranking')
+  }
 })
 
 export { users }
